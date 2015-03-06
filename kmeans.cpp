@@ -1,4 +1,5 @@
 #include<iostream>
+#include<sstream>
 #include<string>
 #include<math.h>
 #include<stdio.h>
@@ -13,6 +14,11 @@ typedef struct{
     int label;
 }DataPoint;
 
+typedef struct{
+    double *means;
+    int numberofdata;
+}Mean;
+
 int main(void){
 
     int d=0;
@@ -25,12 +31,12 @@ int main(void){
     cout << "Input number of Total DataPoints : ";
     cin >> n;
 
-    double **means = new double*[k];
-    for(int i = 0; i<k; i++)
-        means[i] = new double[d];
+    Mean *mean = new Mean[k];
+    for(int i = 0; i<k; i++){
+        mean[i].means = new double[d];
+        mean[i].numberofdata = 0;
+    }
     
-    for(int m = 0; m < k; m++)
-        means[m] = 0;
 
     DataPoint *datapoints = new DataPoint[n];
     
@@ -49,66 +55,71 @@ int main(void){
         while ((pos = line.find(delimiter)) != std::string::npos) {
             token = line.substr(0, pos);
             line.erase(0, pos + delimiter.length());
-            datapoints[i].values[j] = stoi(token);
+            istringstream(token) >> datapoints[i].values[j];
             j ++;
         }
-        datapoints[i].values[j] = stoi(line);
+        istringstream(line) >> datapoints[i].values[j];
         i++;
+        j = 0;
         datapoints[i-1].Did = i;
+        datapoints[i-1].label = -1;
     }
     int flag_move = 0;
     while(1){
         flag_move = 0;
         
-        
         for(int i = 0; i < n; i++){
-            
-            if(means[k-1][0] == 0){
+           // cout << "current data id : " << i << endl;
+            if(mean[k-1].means[0] == 0){
                 for(int j = 0; j < d; j++)
-                    means[i][j] = datapoints[i].values[j];
+                    mean[i].means[j] = datapoints[i].values[j];
                 flag_move = 1;
+                mean[i].numberofdata ++;
             }
             else{
                 int check_label = datapoints[i].label;
-
-                for(int j = 0; j < k; k++){
-                    double mindis = -1;
-                    double dis = 0;
-                    
+                int closest = -1; 
+                double mindis = -1;
+                double dis = 0;
+                for(int j = 0; j < k; j++){
                     for(int de = 0; de < d; de++)
-                        dis += pow(means[j][de] - datapoints[i].values[de],2);
+                        dis += pow(mean[j].means[de] - datapoints[i].values[de],2);
                     dis = sqrt(dis);
                     
                     if(mindis == -1 || mindis > dis){
                         mindis = dis;
-                        datapoints[i].label = j;
+                        closest = j;
                     }
+                    dis = 0;
                 }
-                
+                        
+                datapoints[i].label = closest;
+                for(int de = 0; de < d; de++){
+                    mean[closest].means[de] *= mean[closest].numberofdata;
+                    mean[closest].means[de] += datapoints[i].values[de];
+                    mean[closest].means[de] /= (mean[closest].numberofdata + 1);
+                    if(check_label != -1)
+                        mean[check_label].means[de] = ((mean[check_label].means[de] * mean[check_label].numberofdata) - datapoints[i].values[de])/(mean[check_label].numberofdata - 1);
+                }
+                if(check_label != -1)
+                    mean[check_label].numberofdata --;
+                mean[closest].numberofdata ++;
+            
                 if(check_label != datapoints[i].label)
                     flag_move = 1;
             }
         }
-
-        
         if(flag_move == 0)
             break;
     }
-    
-    string label = "cl_";
-    for(int i = 0; i<k; i++){
-        cout << "Cluster " << to_string(i) <<endl;
-        for(int j = 0; j<n; j++){
-        
-            if(datapoints[j].label == i){
-                cout << datapoints[j].Did;
-                for(int l = 0; l < d; l++)
-                    cout << datapoints[j].values[l];
-                cout << endl;
-            }
-            
-        }
-
+    for(int j = 0; j<n; j++){
+        cout << datapoints[j].Did << " ";
+        for(int l = 0; l < d; l++)
+            cout << datapoints[j].values[l] << " ";
+        cout << datapoints[j].label << endl;
     }
+            
+
+    return 0;
 
 }
